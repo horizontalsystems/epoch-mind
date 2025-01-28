@@ -850,6 +850,7 @@ export class AgentRuntime implements IAgentRuntime {
                 this.character.templates?.evaluationTemplate ||
                 evaluationTemplate,
         });
+        // console.log("runtime context", context);
 
         const result = await generateText({
             runtime: this,

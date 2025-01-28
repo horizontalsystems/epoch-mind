@@ -39,7 +39,6 @@ import { zgPlugin } from "@elizaos/plugin-0g";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
 import createGoatPlugin from "@elizaos/plugin-goat";
 // import { intifacePlugin } from "@elizaos/plugin-intiface";
-import { DirectClient } from "@elizaos/client-direct";
 import { ThreeDGenerationPlugin } from "@elizaos/plugin-3d-generation";
 import { abstractPlugin } from "@elizaos/plugin-abstract";
 import { alloraPlugin } from "@elizaos/plugin-allora";
@@ -102,7 +101,11 @@ import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
-import {dominosPlugin} from "@elizaos/plugin-dominos";
+import { noneAction } from "../../packages/plugin-bootstrap/src/actions";
+import { goalEvaluator } from "../../packages/plugin-bootstrap/src/evaluators";
+import { timeProvider } from "../../packages/plugin-bootstrap/src/providers";
+import { therapyStateEvaluator } from "./therapyStateEvaluator";
+import { therapyStateProvider } from "./therapyStateProvider";
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -490,6 +493,7 @@ function initializeDatabase(dataDir: string) {
         db.init()
             .then(() => {
                 elizaLogger.success("Successfully connected to PostgreSQL database");
+                db.query("CREATE TABLE IF NOT EXISTS therapy_states (room_id UUID, user_id UUID, status TEXT, present_symptoms TEXT[], relevant_history TEXT[], PRIMARY KEY (room_id, user_id))");
             })
             .catch((error) => {
                 elizaLogger.error("Failed to connect to PostgreSQL:", error);
@@ -704,11 +708,10 @@ export async function createAgent(
         databaseAdapter: db,
         token,
         modelProvider: character.modelProvider,
-        evaluators: [],
+        evaluators: [therapyStateEvaluator],
         character,
         // character.plugins are handled when clients are added
         plugins: [
-            bootstrapPlugin,
             getSecret(character, "CONFLUX_CORE_PRIVATE_KEY")
                 ? confluxPlugin
                 : null,
@@ -855,8 +858,8 @@ export async function createAgent(
                 ? quaiPlugin
                 : null,
         ].filter(Boolean),
-        providers: [],
-        actions: [],
+        providers: [therapyStateProvider],
+        actions: [noneAction],
         services: [],
         managers: [],
         cacheManager: cache,
